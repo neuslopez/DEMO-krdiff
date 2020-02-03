@@ -11,7 +11,7 @@ from . stat_functions  import mean_and_std
 from . kr_types import Number, Array, Str
 from . kr_types        import PlotLabels
 
-from   krcal.core.histo_functions                 import h1, h1d, plot_histo
+from   krcal.core.histo_functions                 import h1, h1d, plot_histo, profile1d
 
 from invisible_cities.icaro. hst_functions import shift_to_bin_centers
 
@@ -156,31 +156,79 @@ def h2d(x         : np.array,
 
 
 
-def plot_EQ(dst, Ebins, Eranges, Qbins, Qranges, loc_E='upper right', loc_Q='upper left', figsize=(14,10)):
+def plot_EQ(dst, Ebins, Eranges, Qbins, Qranges, loc_E='upper right',
+            loc_Q='upper left', figsize=(14,10)):
+    
     fig = plt.figure(figsize=figsize)
 
     ax      = fig.add_subplot(2, 2, 1)
-    (_) = h1(dst.E, bins = Ebins, range = Eranges, histtype='stepfilled', color='crimson',
+    (_) = h1(dst.E, bins = Ebins, range = Eranges, histtype='stepfilled',
+             color='crimson',
              lbl='')
     plot_histo(PlotLabels('E per sipm (pes)','Entries',''), ax)
     plt.legend(loc=loc_E)
 
     ax      = fig.add_subplot(2, 2, 2)
-    (_) = h1(dst.Q, bins = Qbins, range = Qranges, histtype='stepfilled', color='crimson',
+    (_) = h1(dst.Q, bins = Qbins, range = Qranges, histtype='stepfilled',
+             color='crimson',
                  lbl='')
     plot_histo(PlotLabels('Q per sipm (pes)','Entries',''), ax)
     plt.legend(loc=loc_Q)
 
-    
-def plot_event_energy(dst, group, Ebins, Eranges, Qbins, Qranges, loc_E='upper right',
-                      loc_Q='upper left', figsize=(14,10)):
+
+def plot_wcharged(w, w_cut, wbins = 50, wrange = (0., 1.), loc_E='upper right',
+            loc_Q='upper right', figsize=(14,10)):
+    """plot w when pandas is index by sipm fired (need a group) """
 
     sns.set_style("white")
     sns.set_style("ticks")
-    plot_EQ(group, 50, [3000, 7000], 50, [100, 300], loc_E= 'upper left',
-            loc_Q= 'upper right', figsize=(15,11))
 
-def control_plots_XY(dst, DX, DY):
+    fig = plt.figure(figsize=figsize)
+    
+    ax      = fig.add_subplot(2, 2, 1)
+    (_) = h1(w, bins = wbins, range = wrange, histtype='stepfilled',
+             color='crimson',
+             lbl='')
+    plot_histo(PlotLabels('Weighted charge before cut','Entries',''), ax)
+    plt.legend(loc=loc_E)
+
+    ax      = fig.add_subplot(2, 2, 2)
+    (_) = h1(w_cut, bins = wbins, range = wrange, histtype='stepfilled',
+             color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Weighted charge after cut','Entries',''), ax)
+    plt.legend(loc=loc_Q)
+
+    
+    
+def plot_event_energy(dst, group, Ebins, Eranges, Qbins, Qranges, loc_E='upper right',
+                      loc_Q='upper left', figsize=(14,10)):
+    """plot event energy when pandas is index by sipm fired (need a group) """
+
+    sns.set_style("white")
+    sns.set_style("ticks")
+
+    fig = plt.figure(figsize=figsize)
+    
+    ax      = fig.add_subplot(2, 2, 1)
+    (_) = h1(group.E, bins = Ebins, range = Eranges, histtype='stepfilled',
+             color='crimson',
+             lbl='')
+    plot_histo(PlotLabels('E total (pes)','Entries',''), ax)
+    plt.legend(loc=loc_E)
+
+    ax      = fig.add_subplot(2, 2, 2)
+    (_) = h1(group.Q, bins = Qbins, range = Qranges, histtype='stepfilled',
+             color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Q total (pes)','Entries',''), ax)
+    plt.legend(loc=loc_Q)
+
+    # he canviat plot_EQ per l'explicita per poder canviar nom de variables
+    #plot_EQ(group, 50, Eranges, 50, Qranges, loc_E= 'upper left',
+    #        loc_Q= 'upper right', figsize=(15,11))
+
+def control_plots_XY(dst, DX, DY, zmax = 320):
 
     sns.set_style("white")
     sns.set_style("ticks")
@@ -189,7 +237,7 @@ def control_plots_XY(dst, DX, DY):
 
     ax      = fig.add_subplot(2, 2, 1)
     (_)  = h2d ( dst.Xpeak, dst.Ypeak, 30, 30, [-75,75], [-75,75],
-           pltLabels=PlotLabels(x='X (mm)', y='Y (mm)', title='X vs Y'),
+           pltLabels=PlotLabels(x='X peak (mm)', y='Y peak (mm)', title='Xpeak vs Ypeak'),
            profile=False,
            figsize=(8,6))
 
@@ -202,22 +250,33 @@ def control_plots_XY(dst, DX, DY):
 
     ax      = fig.add_subplot(2, 2, 3)
     (_)  = h2d(DX, DY, 50, 50, [-75,75], [-75,75],
-           pltLabels=PlotLabels(x='X (mm)', y='Y (mm)', title='X vs Y'),
+           pltLabels=PlotLabels(x='DX (mm)', y='DY (mm)', title='DX vs DY'),
            profile=False,
            figsize=(8,6))
 
     ax      = fig.add_subplot(2, 2, 4)
 
-    plt.hist(dst.Z, 50 , [0, 320] )
+    plt.hist(dst.Z, 50 , [0, zmax] )
     plt.xlabel('Z')
 
 
-def mypdf_double(x, mux, sigmax, Nx, sigmay, Ny):
+    ### give parameter for EL region
+#def mypdf_double(x, mux, sigmax, Nx, sigmay, Ny):
     
-    return Nx*np.exp(-0.5*np.power((x - mux),2)/(np.power(sigmax,2)+np.power(4.627,2))) + Ny*np.exp(-0.5*np.power((x)/(sigmay),2))
-    
+ #   return Nx*np.exp(-0.5*np.power((x - mux),2)/(np.power(sigmax,2)+np.power(4.627,2))) + Ny*np.exp(-0.5*np.power((x)/(sigmay),2))
 
-def plot_residuals(x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Qmean, Qmean_u, name_fig):
+
+ ## old before November 2019
+#def mypdf_double(x, mux, sigmax, Nx, sigmay, Ny):
+    
+ #   return Nx*np.exp(-0.5*np.power((x - mux),2)/(np.power(sigmax,2)+ np.power(0,2))) + Ny*np.exp(-0.5*np.power((x)/(sigmay),2))
+
+def mypdf_double_NoEL_1G1C(x, mux, sigmax, Nx, sigmay, Ny):
+# 1G + 1C
+    return Nx*np.exp(-0.5*np.power((x - mux),2)/(np.power(sigmax,2) )) + Ny
+ 
+
+def plot_residuals_NoEL_1G1C(chi2,  x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Qmean, Qmean_u, name_fig):
 
     import seaborn as sns
     sns.set()
@@ -229,7 +288,7 @@ def plot_residuals(x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Q
     global_linecolor    = "r" 
     
     # compute residuals
-    y_from_fit = mypdf_double(x, mux, sigmax, Nx, sigmay, Ny )
+    y_from_fit = mypdf_double(sigma_vlow_EL, x, mux, sigmax, Nx, sigmay, Ny )
     residuals     = (y_from_fit - Qmean)/ Qmean_u
     residuals_err = (y_from_fit - (Qmean+Qmean))/Qmean_u   # ---> no l'he usat
     
@@ -252,7 +311,8 @@ def plot_residuals(x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Q
     textstr = '\n'.join((
         r'$\mu=%.2f \pm %.2f$ ' % (mux,mux_u ),
         r'$\sigma 1=%.2f \pm %.2f$' % (sigmax, sigmax_u),
-        r'$\sigma 2=%.2f$ ' % (sigmay, )))
+        r'$\sigma 2=%.2f$ ' % (sigmay, ),
+        r'$\chi 2/ndof    =%.1f$ ' % (chi2, )))
 
     ## error on sigma 2
     #textstr = '\n'.join((
@@ -281,6 +341,150 @@ def plot_residuals(x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Q
     plt.savefig('/Users/neus/current-work/diffusion/plots_residuals/'+name_fig+'.png')
 
 
+def mypdf_double_NoEL_1G1C(x, mux, sigmax, Nx, sigmay, Ny):
+# 1G + 1C
+    return Nx*np.exp(-0.5*np.power((x - mux),2)/(np.power(sigmax,2) )) + Ny
+ 
+
+def plot_residuals_NoEL_1G1C(chi2,  x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Qmean, Qmean_u, name_fig):
+
+    import seaborn as sns
+    sns.set()
+    sns.set_style("white")
+    sns.set_style("ticks")
+
+    sigmay = np.abs(sigmay)
+    global_linewidth    = 2
+    global_linecolor    = "r" 
+    
+    # compute residuals
+    y_from_fit = mypdf_double_NoEL_1G1C( x, mux, sigmax, Nx, sigmay, Ny )
+    residuals     = (y_from_fit - Qmean)/ Qmean_u
+    residuals_err = (y_from_fit - (Qmean+Qmean))/Qmean_u   # ---> no l'he usat
+    
+    # Plot
+    frame_data = plt.gcf().add_axes((.1, .3,.8, .6))
+    
+    plt.errorbar    (x, Qmean, Qmean_u, 0, "p", c="k")
+    plt.plot        (x, y_from_fit, lw=global_linewidth, color=global_linecolor   )
+
+    # add the two gaussians
+    #plt.fill_between(x, fitf.gauss(x, *f.values[ :3]),    0,     alpha=0.3, color=subfit_linecolor[0])
+    #plt.fill_between(x, bkg       (x, *f.values[3: ]),    0,     alpha=0.3, color=subfit_linecolor[1])
+    
+    leg1 = plt.gca().legend(('fit', 'data'), loc='upper right')
+    # to add two legends, we need to draw again the first one
+    #plt.gca().legend(('fit', 'prova'), loc=0)
+    #leg2 = plt.gca().legend(('fit', 'prova'), loc='upper left')
+    #plt.gca().add_artist(leg1)   
+    
+    textstr = '\n'.join((
+        r'$\mu=%.2f \pm %.2f$ ' % (mux,mux_u ),
+        r'$\sigma 1=%.2f \pm %.2f$' % (sigmax, sigmax_u),
+    #    r'$\sigma 2=%.2f$ ' % (sigmay, ),
+        r'$\chi 2/ndof    =%.1f$ ' % (chi2, )))
+
+    ## error on sigma 2
+    #textstr = '\n'.join((
+    #    r'$\mu=%.2f \pm %.2f$ ' % (mux,mux_u ),
+    #    r'$\sigma 1=%.2f \pm %.2f$' % (sigmax, sigmax_u),
+    #    r'$\sigma 2=%.2f \pm %.2f$' % (sigmay, sigmay_u)))
+    
+    
+    props = dict(boxstyle='square', facecolor='white', alpha=0.5)
+    plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=14,
+                   verticalalignment='top', bbox=props)
+    
+    frame_data.set_xticklabels([])
+    plt.ylabel("Weigthed Charge")
+    plt.ylim(0)
+    lims = plt.xlim()
+    print(lims)
+    
+    type(lims)
+    frame_res = plt.gcf().add_axes((.1, .1, .8, .2))
+    plt.plot    (lims, [0,0], "-g", lw=0.7)  # linia en 00 verde
+    plt.errorbar(x, residuals, 1, 0, linestyle='None', fmt='|', c="k")
+    plt.ylim(-3.9,3.9)
+    plt.xlabel("x (mm)")
+
+    plt.savefig('/Users/neus/current-work/diffusion/plots_residuals/'+name_fig+'.png')
+    
+    
+
+
+ 
+def mypdf_double(sigma_vlow_EL, x, mux, sigmax, Nx, sigmay, Ny):
+# 1G + 1C
+    return Nx*np.exp(-0.5*np.power((x - mux),2)/(np.power(sigmax,2) + np.power(sigma_vlow_EL,2))) + Ny
+ 
+
+def plot_residuals(chi2, sigma_vlow_EL, x, mux, mux_u , sigmax, sigmax_u, Nx, sigmay, sigmay_u, Ny, Qmean, Qmean_u, name_fig):
+
+    import seaborn as sns
+    sns.set()
+    sns.set_style("white")
+    sns.set_style("ticks")
+
+    sigmay = np.abs(sigmay)
+    global_linewidth    = 2
+    global_linecolor    = "r" 
+    
+    # compute residuals
+    y_from_fit = mypdf_double(sigma_vlow_EL, x, mux, sigmax, Nx, sigmay, Ny )
+    residuals     = (y_from_fit - Qmean)/ Qmean_u
+    residuals_err = (y_from_fit - (Qmean+Qmean))/Qmean_u   # ---> no l'he usat
+    
+    # Plot
+    frame_data = plt.gcf().add_axes((.1, .3,.8, .6))
+    
+    plt.errorbar    (x, Qmean, Qmean_u, 0, "p", c="k")
+    plt.plot        (x, y_from_fit, lw=global_linewidth, color=global_linecolor   )
+
+    # add the two gaussians
+    #plt.fill_between(x, fitf.gauss(x, *f.values[ :3]),    0,     alpha=0.3, color=subfit_linecolor[0])
+    #plt.fill_between(x, bkg       (x, *f.values[3: ]),    0,     alpha=0.3, color=subfit_linecolor[1])
+    
+    leg1 = plt.gca().legend(('fit', 'data'), loc='upper right')
+    # to add two legends, we need to draw again the first one
+    #plt.gca().legend(('fit', 'prova'), loc=0)
+    #leg2 = plt.gca().legend(('fit', 'prova'), loc='upper left')
+    #plt.gca().add_artist(leg1)   
+    
+    textstr = '\n'.join((
+        r'$\mu=%.2f \pm %.2f$ ' % (mux,mux_u ),
+        r'$\sigma 1=%.2f \pm %.2f$' % (sigmax, sigmax_u),
+        r'$\sigma 2=%.2f$ ' % (sigmay, ),
+        r'$\chi 2/ndof    =%.1f$ ' % (chi2, )))
+
+    ## error on sigma 2
+    #textstr = '\n'.join((
+    #    r'$\mu=%.2f \pm %.2f$ ' % (mux,mux_u ),
+    #    r'$\sigma 1=%.2f \pm %.2f$' % (sigmax, sigmax_u),
+    #    r'$\sigma 2=%.2f \pm %.2f$' % (sigmay, sigmay_u)))
+    
+    
+    props = dict(boxstyle='square', facecolor='white', alpha=0.5)
+    plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=14,
+                   verticalalignment='top', bbox=props)
+    
+    frame_data.set_xticklabels([])
+    plt.ylabel("Weigthed Charge")
+    plt.ylim(0)
+    lims = plt.xlim()
+    print(lims)
+    
+    type(lims)
+    frame_res = plt.gcf().add_axes((.1, .1, .8, .2))
+    plt.plot    (lims, [0,0], "-g", lw=0.7)  # linia en 00 verde
+    plt.errorbar(x, residuals, 1, 0, linestyle='None', fmt='|', c="k")
+    plt.ylim(-3.9,3.9)
+    plt.xlabel("x (mm)")
+
+    plt.savefig('/Users/neus/current-work/diffusion/plots_residuals/'+name_fig+'.png')
+
+
+    
 def mypdf_EL_double(x, mux, sigmax, Nx, sigmay, Ny):
     return Nx*np.exp(-0.5*np.power((x - mux)/(sigmax),2)) + Ny*np.exp(-0.5*np.power((x)/(sigmay),2))
 
@@ -518,7 +722,9 @@ def plot_residuals_E_reso_gauss(energy, e_nbins, e_range, mu, mu_u , sigma, sigm
     entries_u    =  entries**0.5
     
     # compute residuals
-    y_from_fit    = mypdf_gauss(e, mu, sigma, N*13 )
+    scale = (e_range[1] - e_range[0])/e_nbins
+#    print(scale)
+    y_from_fit    = mypdf_gauss(e, mu, sigma, N*scale )
     residuals     = (y_from_fit - entries)/ entries_u
     
     # Plot
@@ -557,7 +763,151 @@ def plot_residuals_E_reso_gauss(energy, e_nbins, e_range, mu, mu_u , sigma, sigm
     plt.ylim(-3.9,3.9)
     plt.xlabel("E (pes)")
 
-    plt.savefig('/Users/neus/current-work/diffusion/plots_residuals/'+name_fig+'.png')
+    plt.savefig('/Users/neus/current-work/diffusion/energy_resolution/'+name_fig+'.png')
 
  
 
+def control_plots_longitudinal_1 (d):
+
+    fig = plt.figure(figsize=(22,14))
+
+    ax      = fig.add_subplot(3, 3, 1)
+    nevt = h2(d.wT, d.wVar, 50, 50, [10,300], [0, 5], profile=True)
+    labels(PlotLabels(x='weighted mean', y='weighted variance', title=None))
+
+    ax      = fig.add_subplot(3, 3, 2)
+    nevt = h2(d.Zmean, d.Zvar, 50, 50, [10,300], [0, 20], profile=True)
+    labels(PlotLabels(x='Z mean', y='Non-weighted variance', title=None))
+
+    ax      = fig.add_subplot(3, 3, 3)
+    plt.hist(d.wVar[(d.wT>20)&(d.wT<60)], bins = 50, range = [0,5], histtype='stepfilled', color='grey', label='wt=[20,60]')
+    plt.legend(loc='upper left')
+
+    plt.hist(d.wVar[(d.wT>100)&(d.wT<140)], bins = 50, range = [0,5], histtype='stepfilled', color='crimson', label = 'wt=[100,140]')
+    plot_histo(PlotLabels('weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    plt.hist(d.wVar[(d.wT>200)&(d.wT<240)], bins = 50, range = [0,5], histtype='stepfilled', color='cornflowerblue', label='wt=[200,240]')
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 4)
+    plt.hist(d.Zvar[(d.Zmean>20)&(d.Zmean<60)], bins = 14, range = [0,15], histtype='stepfilled', color='grey', label='wt=[20,60]')
+    plt.legend(loc='upper left')
+    plot_histo(PlotLabels('Non-weigthed Variance','Entries',''), ax)
+
+    plt.hist(d.Zvar[(d.Zmean>100)&(d.Zmean<140)], bins = 14, range = [0,15], histtype='stepfilled', color='crimson', alpha=0.6, label='wt=[100,140]')
+    plt.legend(loc='upper left')
+
+    plt.hist(d.Zvar[(d.Zmean>200)&(d.Zmean<240)], bins = 14, range = [0,15], histtype='stepfilled', color='cornflowerblue', alpha=0.9, label='wt=[200,240]')
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 5)
+    (_) = h1(d.Zmean - d.wT , bins = 49, range = [-1.5,1.5], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Zmean - wT','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 6)
+    (_) = h1(d.Zvar - d.wVar, bins = 49, range = [0,10], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Zvar - wVar','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    #plt.show()
+
+def control_plots_longitudinal_2(d):
+    
+    fig = plt.figure(figsize=(20,16))
+    ax      = fig.add_subplot(3, 3, 1)
+    (_) = h1(d.wVar[(d.wT>20)&(d.wT<30)], bins = 50, range = [0,5], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+    ax.set_yscale('log')
+
+    ax      = fig.add_subplot(3, 3, 2)
+    (_) = h1(d.wVar[(d.wT>50)&(d.wT<70)], bins = 50, range = [0,5], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+    ax.set_yscale('log')
+
+    ax      = fig.add_subplot(3, 3, 3)
+    (_) = h1(d.wVar[(d.wT>100)&(d.wT<120)], bins = 50, range = [0,5], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+    ax.set_yscale('log')
+
+    fig = plt.figure(figsize=(20,16))
+    ax      = fig.add_subplot(3, 3, 1)
+    (_) = h1(d.Zvar[(d.Zmean>20)&(d.Zmean<30)], bins = 50, range = [0,10], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Non-Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+    ax.set_yscale('log')
+
+    ax      = fig.add_subplot(3, 3, 2)
+    (_) = h1(d.Zvar[(d.Zmean>50)&(d.Zmean<70)], bins = 50, range = [0,10], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Non-Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+    ax.set_yscale('log')
+
+    ax      = fig.add_subplot(3, 3, 3)
+    (_) = h1(d.Zvar[(d.Zmean>100)&(d.Zmean<120)], bins = 50, range = [0,10], histtype='stepfilled', color='crimson',lbl='')
+    plot_histo(PlotLabels('Non-Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper left')
+    ax.set_yscale('log')
+
+
+def control_plots(d):
+
+    fig = plt.figure(figsize=(16,12))
+
+    ax      = fig.add_subplot(3, 3, 1)
+    (_) = h1(d.Z, bins = 50, range = [0,300], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Z (taking first entry in pandas, careful)','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 2)
+    (_) = h1(d.Etot, bins = 50, range = [3500,6000], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('E per event','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 3)
+    (_) = h1(d.ntot, bins = 20, range = [0,20], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Num of slices per event','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 4)
+    (_) = h1(d.Zmean, bins = 50, range = [0,300], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Z mean per event','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 5)
+    (_) = h1(d.Zvar, bins = 50, range = [0,20], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Z variance (np.var) per event','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 6)
+    (_) = h1(d.Zstd, bins = 50, range = [0,5], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Z std (np.std= sqrt(np.var)) per event','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 7)
+    (_) = h1(d.wT, bins = 50, range = [0,300], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Weighted by E mean','Entries',''), ax)
+    plt.legend(loc='upper left')
+
+    ax      = fig.add_subplot(3, 3, 8)
+    (_) = h1(d.wVar, bins = 50, range = [0,20], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Weighted variance','Entries',''), ax)
+    plt.legend(loc='upper right')
+
+    ax      = fig.add_subplot(3, 3, 9)
+    (_) = h1(d.wStd, bins = 50, range = [0,5], histtype='stepfilled', color='crimson',
+                 lbl='')
+    plot_histo(PlotLabels('Weighted std','Entries',''), ax)
+    plt.legend(loc='upper right')
